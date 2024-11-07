@@ -1,9 +1,8 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'theme_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'theme_provider.dart';
 
 class TodoPage extends StatefulWidget {
   const TodoPage({Key? key}) : super(key: key);
@@ -12,14 +11,26 @@ class TodoPage extends StatefulWidget {
   State<TodoPage> createState() => _TodoPageState();
 }
 
-class _TodoPageState extends State<TodoPage> {
+class _TodoPageState extends State<TodoPage> with SingleTickerProviderStateMixin {
   final TextEditingController _todoController = TextEditingController();
   List<Map<String, dynamic>> _todoList = [];
+  late AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
     _loadTodoList();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+  }
+
+  @override
+  void dispose() {
+    _todoController.dispose();
+    _animationController.dispose();
+    super.dispose();
   }
 
   // 저장된 할 일 목록 불러오기
@@ -42,34 +53,68 @@ class _TodoPageState extends State<TodoPage> {
 
   // 할 일 추가하기
   void _addTodo() {
-    setState(() {
-      if (_todoController.text.isNotEmpty) {
+    if (_todoController.text.isNotEmpty) {
+      setState(() {
         _todoList.add({'task': _todoController.text, 'completed': false});
-        _todoController.clear();
-        _saveTodoList(); // 새 할 일을 추가할 때마다 저장
-      }
-    });
+        _animationController.forward(from: 0.0);
+      });
+      _todoController.clear();
+      _saveTodoList();
+    }
   }
 
   // 할 일 삭제하기
   void _deleteTodoItem(int index) {
     setState(() {
       _todoList.removeAt(index);
-      _saveTodoList(); // 할 일을 삭제할 때마다 저장
     });
+    _saveTodoList();
   }
 
   // 할 일 완료 상태 변경하기
   void _toggleTodoCompletion(int index) {
     setState(() {
       _todoList[index]['completed'] = !_todoList[index]['completed'];
-      _saveTodoList(); // 완료 상태를 변경할 때마다 저장
+      _saveTodoList();
     });
+  }
+
+  Widget _buildTodoItem(Map<String, dynamic> todo, int index) {
+    return SizeTransition(
+      sizeFactor: CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeIn,
+      ),
+      child: Card(
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10.0),
+        ),
+        child: ListTile(
+          leading: Checkbox(
+            value: todo['completed'],
+            onChanged: (bool? value) {
+              _toggleTodoCompletion(index);
+            },
+          ),
+          title: Text(
+            todo['task'],
+            style: TextStyle(
+              fontSize: 18,
+              decoration: todo['completed'] ? TextDecoration.lineThrough : TextDecoration.none,
+            ),
+          ),
+          trailing: IconButton(
+            icon: const Icon(Icons.delete, color: Colors.redAccent),
+            onPressed: () => _deleteTodoItem(index),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // ThemeProvider를 사용하여 전역 테마 색상 가져오기
     final themeColor = Provider.of<ThemeProvider>(context).themeColor;
 
     return Scaffold(
@@ -116,33 +161,7 @@ class _TodoPageState extends State<TodoPage> {
               child: ListView.builder(
                 itemCount: _todoList.length,
                 itemBuilder: (context, index) {
-                  return Card(
-                    elevation: 3,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                    ),
-                    child: ListTile(
-                      leading: Checkbox(
-                        value: _todoList[index]['completed'],
-                        onChanged: (bool? value) {
-                          _toggleTodoCompletion(index);
-                        },
-                      ),
-                      title: Text(
-                        _todoList[index]['task'],
-                        style: TextStyle(
-                          fontSize: 18,
-                          decoration: _todoList[index]['completed']
-                              ? TextDecoration.lineThrough
-                              : TextDecoration.none,
-                        ),
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.redAccent),
-                        onPressed: () => _deleteTodoItem(index),
-                      ),
-                    ),
-                  );
+                  return _buildTodoItem(_todoList[index], index);
                 },
               ),
             ),
