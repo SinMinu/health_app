@@ -11,25 +11,19 @@ class TodoPage extends StatefulWidget {
   State<TodoPage> createState() => _TodoPageState();
 }
 
-class _TodoPageState extends State<TodoPage> with SingleTickerProviderStateMixin {
+class _TodoPageState extends State<TodoPage> {
   final TextEditingController _todoController = TextEditingController();
   List<Map<String, dynamic>> _todoList = [];
-  late AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
     _loadTodoList();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
   }
 
   @override
   void dispose() {
     _todoController.dispose();
-    _animationController.dispose();
     super.dispose();
   }
 
@@ -56,8 +50,8 @@ class _TodoPageState extends State<TodoPage> with SingleTickerProviderStateMixin
     if (_todoController.text.isNotEmpty) {
       setState(() {
         _todoList.add({'task': _todoController.text, 'completed': false});
-        _animationController.forward(from: 0.0);
       });
+
       _todoController.clear();
       _saveTodoList();
     }
@@ -80,34 +74,28 @@ class _TodoPageState extends State<TodoPage> with SingleTickerProviderStateMixin
   }
 
   Widget _buildTodoItem(Map<String, dynamic> todo, int index) {
-    return SizeTransition(
-      sizeFactor: CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeIn,
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10.0),
       ),
-      child: Card(
-        elevation: 3,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.0),
+      child: ListTile(
+        leading: Checkbox(
+          value: todo['completed'],
+          onChanged: (bool? value) {
+            _toggleTodoCompletion(index);
+          },
         ),
-        child: ListTile(
-          leading: Checkbox(
-            value: todo['completed'],
-            onChanged: (bool? value) {
-              _toggleTodoCompletion(index);
-            },
+        title: Text(
+          todo['task'],
+          style: TextStyle(
+            fontSize: 18,
+            decoration: todo['completed'] ? TextDecoration.lineThrough : TextDecoration.none,
           ),
-          title: Text(
-            todo['task'],
-            style: TextStyle(
-              fontSize: 18,
-              decoration: todo['completed'] ? TextDecoration.lineThrough : TextDecoration.none,
-            ),
-          ),
-          trailing: IconButton(
-            icon: const Icon(Icons.delete, color: Colors.redAccent),
-            onPressed: () => _deleteTodoItem(index),
-          ),
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.delete, color: Colors.redAccent),
+          onPressed: () => _deleteTodoItem(index),
         ),
       ),
     );
